@@ -10,6 +10,7 @@ struct MontyHall<'a> {
 
 trait Player {
     fn get_choice(&self)->usize;
+    fn make_choice(&mut self, available_doors: &Vec<usize>)->usize;
 }
 
 #[derive(Debug)]
@@ -20,6 +21,18 @@ struct SwappingPlayer {
 impl Player for SwappingPlayer {
     fn get_choice(&self)->usize {
         self.current_choice
+    }
+
+    fn make_choice(&mut self, available_doors: &Vec<usize>)->usize {
+        let result = available_doors.iter()
+        .find(|&&door| (door != self.get_choice()));
+        match result {
+            Some(&i) => {
+                self.current_choice = i;
+                i
+            },
+            None => panic!("SwappingPlayer unable to swap choices from available_doors {:?}", available_doors),
+        }
     }
 }
 
@@ -42,9 +55,24 @@ impl MontyHall<'_> {
         println!("Choices: {:?}", choices);
         let revealed = choices.choose(&mut rand::thread_rng());
         match revealed {
-            Some((i, _x)) => self.doors[*i] = 3,
+            Some((i, _)) => self.doors[*i] = 3,
             None => panic!("No choices available!")
         }
+    }
+
+    fn get_available_doors(&self) -> Vec<usize> {
+        let choices: Vec<usize> = self.doors.iter().enumerate()
+            .filter(|(_, door)| (**door != 3 ) )
+            .map(|(i, _)| i)
+            .collect();
+        choices
+    }
+
+    fn player_wins(&self, player: &mut dyn Player) -> bool {
+        player.make_choice(&self.get_available_doors());
+        let prize = self.doors[player.get_choice()];
+        
+        prize == 1
     }
 }
 
@@ -56,4 +84,5 @@ fn main(){
     println!("MontyHall base: {:?}", mhall);
     mhall.reveal_door(&player);
     println!("MontyHall reveal: {:?}", mhall);
+    println!("Player wins? {:?}", mhall.player_wins(&mut player));
 }
